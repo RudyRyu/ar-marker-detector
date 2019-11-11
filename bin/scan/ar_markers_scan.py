@@ -19,7 +19,9 @@ if __name__ == '__main__':
     while True:
         frame = capture.read()
         if frame is not None:
-            markers = detect_markers(frame)
+            markers, rects = detect_markers(frame)
+            for rect in rects:
+                cv2.drawContours(frame, [rect], -1, (0, 0, 255), 5)
             for marker in markers:
                 marker.highlite_marker(frame)
             resized = cv2.resize(frame, view_size)

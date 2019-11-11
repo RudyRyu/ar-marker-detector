@@ -70,6 +70,7 @@ def detect_markers(img):
     markers_list = []
     size = (gray_ori.shape[1], gray_ori.shape[0])
     gray = cv2.resize(gray_ori, dsize=size)
+    rect_list = []
     _, gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     # g1 = cv2.GaussianBlur(gray, (5, 5), 1.2)
     # g2 = cv2.GaussianBlur(gray, (5, 5), 1.3)
@@ -112,7 +113,7 @@ def detect_markers(img):
         max_cos = np.max([angle_cos( cnt[i], cnt[(i+1) % 4], cnt[(i+2) % 4] ) for i in range(4)])
         if max_cos >= 0.25:
             continue
-
+        rect_list.append(approx_curve)
         sorted_curve = array(
             cv2.convexHull(approx_curve, clockwise=False),
             dtype='float32'
@@ -140,4 +141,4 @@ def detect_markers(img):
         except ValueError as e:
             # print(e)
             continue
-    return markers_list
+    return markers_list, rect_list
