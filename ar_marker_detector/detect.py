@@ -110,7 +110,7 @@ def detect_markers(img):
             continue
         cnt = approx_curve.reshape(-1, 2)
         max_cos = np.max([angle_cos( cnt[i], cnt[(i+1) % 4], cnt[(i+2) % 4] ) for i in range(4)])
-        if max_cos >= 0.15:
+        if max_cos >= 0.25:
             continue
 
         sorted_curve = array(
