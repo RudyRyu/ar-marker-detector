@@ -120,9 +120,8 @@ def detect_markers(img):
         )
         persp_transf = cv2.getPerspectiveTransform(sorted_curve, canonical_marker_coords)
         warped_img = cv2.warpPerspective(gray, persp_transf, (warped_size, warped_size))
-        warped_gray = warped_img
 
-        _, warped_bin = cv2.threshold(warped_gray, 127, 255, cv2.THRESH_BINARY)
+        _, warped_bin = cv2.threshold(warped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         marker = warped_bin.reshape(
             [MARKER_SIZE, warped_size // MARKER_SIZE, MARKER_SIZE, warped_size // MARKER_SIZE]
@@ -135,7 +134,6 @@ def detect_markers(img):
             marker = validate_and_turn(marker)
             hamming_code = extract_hamming_code(marker)
             marker_id = int(decode(hamming_code), 2)
-            approx_curve = approx_curve
             markers_list.append(HammingMarker(id=marker_id, contours=approx_curve.astype('int')))
             
         except ValueError as e:
