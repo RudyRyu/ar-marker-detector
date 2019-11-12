@@ -45,7 +45,7 @@ class HammingMarker(object):
     def draw_contour(self, img, color=(0, 255, 0), linewidth=5):
         cv2.drawContours(img, [self.contours], -1, color, linewidth)
 
-    def highlite_marker(self, img, contour_color=(0, 255, 0), text_color=(0, 0, 255), linewidth=5, text_thickness=1):
+    def highlight_marker(self, img, contour_color=(0, 255, 0), text_color=(0, 0, 255), linewidth=5, text_thickness=1):
         """
         This draws a bounding box around the marker on the image. NOTE: it returns
         a BGR image so the highlite is in color.
