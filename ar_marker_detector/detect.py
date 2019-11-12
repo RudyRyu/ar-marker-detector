@@ -52,6 +52,7 @@ def angle_cos(p0, p1, p2):
     return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
 
 def detect_markers(img):
+def detect_markers(img, scale=1):
     """
     This is the main function for detecting markers in an image.
 
@@ -62,38 +63,35 @@ def detect_markers(img):
       a list of found markers. If no markers are found, then it is an empty list.
     """
     if len(img.shape) > 2:
-        width, height, _ = img.shape
-        gray_ori = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        height, width, _ = img.shape
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     else:
-        width, height = img.shape
-        gray_ori = img
+        height, width = img.shape
+        gray = img
     markers_list = []
-    size = (gray_ori.shape[1], gray_ori.shape[0])
-    gray = cv2.resize(gray_ori, dsize=size)
     rect_list = []
-    _, gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # g1 = cv2.GaussianBlur(gray, (5, 5), 1.2)
-    # g2 = cv2.GaussianBlur(gray, (5, 5), 1.3)
-    # diff = cv2.GaussianBlur(gray, (5, 5), 1.2)
+    scaled = cv2.resize(gray, (int(width*scale), int(height*scale)), cv2.INTER_CUBIC)
+    gray = cv2.GaussianBlur(gray, (3, 3), 1.1)
+    _, scaled = cv2.threshold(scaled, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     # diff = np.abs(g2-g1)
     # diff = gray
     # diff = g2-g1
     # _, diff = cv2.threshold(diff, 127, 255, cv2.THRESH_BINARY)
     # diff = g1 - g2
     
+    edges = scaled
     # edges = cv2.Canny(diff, 10, 100)
     # cv2.imshow('edges', edges)
     # edges = diff
     # edges = cv2.dilate(edges, None, iterations=3)
     # edges = cv2.erode(edges, None, iterations=3)
     # cv2.imshow('dilate', edges)
-    edges = gray
     contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)[-2:]
 
     # We only keep the long enough contours
     min_contour_length = min(width, height) / 50
     contours = [contour for contour in contours if len(contour) > min_contour_length]
-    warped_size = 49
+    warped_size = 70
     canonical_marker_coords = array(
         (
             (0, 0),
@@ -107,12 +105,14 @@ def detect_markers(img):
     for contour in contours:
         cnt_len = cv2.arcLength(contour, True)
         approx_curve = cv2.approxPolyDP(contour, cnt_len * 0.02, True)
-        if not (len(approx_curve) == 4 and cv2.isContourConvex(approx_curve) and cv2.contourArea(approx_curve) > 500):
+        if not (len(approx_curve) == 4 and cv2.isContourConvex(approx_curve) and cv2.contourArea(approx_curve) > 100):
             continue
         cnt = approx_curve.reshape(-1, 2)
         max_cos = np.max([angle_cos( cnt[i], cnt[(i+1) % 4], cnt[(i+2) % 4] ) for i in range(4)])
         if max_cos >= 0.3:
             continue
+        approx_curve = np.array(approx_curve)
+        approx_curve = (approx_curve / scale).astype(np.int32)
         rect_list.append(approx_curve)
         sorted_curve = array(
             cv2.convexHull(approx_curve, clockwise=False),
