@@ -111,7 +111,7 @@ def detect_markers(img):
             continue
         cnt = approx_curve.reshape(-1, 2)
         max_cos = np.max([angle_cos( cnt[i], cnt[(i+1) % 4], cnt[(i+2) % 4] ) for i in range(4)])
-        if max_cos >= 0.25:
+        if max_cos >= 0.3:
             continue
         rect_list.append(approx_curve)
         sorted_curve = array(
@@ -120,8 +120,8 @@ def detect_markers(img):
         )
         persp_transf = cv2.getPerspectiveTransform(sorted_curve, canonical_marker_coords)
         warped_img = cv2.warpPerspective(gray, persp_transf, (warped_size, warped_size))
-
-        _, warped_bin = cv2.threshold(warped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        warped_img = cv2.GaussianBlur(warped_img, (3, 3), 1.1)
+        _, warped_bin = cv2.threshold(warped_img, 150, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
         marker = warped_bin.reshape(
             [MARKER_SIZE, warped_size // MARKER_SIZE, MARKER_SIZE, warped_size // MARKER_SIZE]
