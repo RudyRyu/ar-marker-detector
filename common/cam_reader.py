@@ -1,4 +1,5 @@
 import threading
+import time
 from threading import Lock
 
 import cv2
@@ -27,17 +28,29 @@ class Camera:
         self.map1, self.map2 = cv2.initUndistortRectifyMap(K, d, None, cam_mat,
                                                            img_size, 5)
 
-        capture = cv2.VideoCapture(rtsp_link)
+        self.capture = cv2.VideoCapture(rtsp_link)
+        self.capture.set(cv2.CAP_PROP_POS_FRAMES, 2010)
+
         thread = threading.Thread(target=self.rtsp_cam_buffer,
-                                  args=(capture,),
+                                  args=(self.capture,),
                                   name="rtsp_read_thread")
         thread.daemon = True
-        thread.start()
+        # thread.start()
 
     def rtsp_cam_buffer(self, capture):
         while True:
             with self.lock:
                 self.last_ready, self.last_frame = capture.read()
+                # time.sleep(0.01)
+
+
+    def read_each_img(self):
+        ret, img = self.capture.read()
+        if ret:
+            img = cv2.remap(img.copy(), self.map1, self.map2, cv2.INTER_CUBIC)
+
+        return ret, img
+
 
     def read(self):
         if (self.last_ready is not None) and (self.last_frame is not None):

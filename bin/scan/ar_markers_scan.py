@@ -129,14 +129,11 @@ def set_final_car_abs_coords_per_cam(final_car_abs_coords, car_abs_coords,
         final_car_abs_coords[cac[0].id].append(cac[1])
         text = f'  {cac[1]}'
         cv2.putText(img, text, cac[0].center,
-                    1, 4.0, (255, 0, 0), thickness=5)
+                    1, 4.0, (0, 255, 0), thickness=5)
 
 @check_time
 def show_img(img_name, img, r_scale):
     cv2.imshow(img_name, cv2.resize(img, None, fx=r_scale, fy=r_scale))
-    cv2.waitKey(1)
-    # if cv2.waitKey(1) & 0xFF == ord('q'):
-    #     break
 
 @check_time
 def set_final_car_abs_coords(final_car_abs_coords):
@@ -185,13 +182,15 @@ def run_detection(conf):
     # cam2 = Camera(~)
 
     cams = [cam1]
-    view_size = (1280, 720)
+    # view_size = (1280, 720)
+    r_scale = 0.5
 
     while True:
         final_car_abs_coords = defaultdict(lambda: [])
         for cam in cams:
-            img = cam.read()
-            if img is None:
+            # img = cam.read()
+            ret, img = cam.read_each_img()
+            if not ret:
                 continue
 
             detected_markers, contours = detect_markers(img)
@@ -218,10 +217,13 @@ def run_detection(conf):
             set_final_car_abs_coords_per_cam(final_car_abs_coords,
                                              car_abs_coords, img)
 
-            resized = cv2.resize(img, view_size)
-            cv2.imshow('Result', resized)
-            if cv2.waitKey(10) & 0xFF == ord('q'):
+            show_img(cam.name, img, r_scale)
+
+            if cv2.waitKey() & 0xFF == ord('q'):
                 break
+
+        set_final_car_abs_coords(final_car_abs_coords)
+        something_to_do(final_car_abs_coords)
 
 
 if __name__ == '__main__':
