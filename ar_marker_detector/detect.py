@@ -11,6 +11,8 @@ from numpy import array, rot90
 
 from ar_marker_detector.coding import decode, extract_hamming_code
 from ar_marker_detector.marker import MARKER_SIZE, HammingMarker
+from common.utils import check_time
+
 
 BORDER_COORDINATES = [
     [0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [1, 0], [1, 6], [2, 0], [2, 6], [3, 0],
@@ -51,6 +53,7 @@ def angle_cos(p0, p1, p2):
     d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
     return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
 
+@check_time
 def detect_markers(img, scale=1):
     """
     This is the main function for detecting markers in an image.
@@ -61,6 +64,8 @@ def detect_markers(img, scale=1):
     Output:
       a list of found markers. If no markers are found, then it is an empty list.
     """
+
+    img= cv2.add(img.copy(), np.array([30.0]))
     if len(img.shape) > 2:
         height, width, _ = img.shape
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -70,22 +75,10 @@ def detect_markers(img, scale=1):
     markers_list = []
     rect_list = []
     scaled = cv2.resize(gray, (int(width*scale), int(height*scale)), cv2.INTER_CUBIC)
-    gray = cv2.GaussianBlur(gray, (3, 3), 1.1)
+    # gray = cv2.GaussianBlur(gray, (3, 3), 1.1)
     _, scaled = cv2.threshold(scaled, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    # diff = np.abs(g2-g1)
-    # diff = gray
-    # diff = g2-g1
-    # _, diff = cv2.threshold(diff, 127, 255, cv2.THRESH_BINARY)
-    # diff = g1 - g2
-    
-    edges = scaled
-    # edges = cv2.Canny(diff, 10, 100)
-    # cv2.imshow('edges', edges)
-    # edges = diff
-    # edges = cv2.dilate(edges, None, iterations=3)
-    # edges = cv2.erode(edges, None, iterations=3)
-    # cv2.imshow('dilate', edges)
-    contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)[-2:]
+
+    contours, hierarchy = cv2.findContours(scaled, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)[-2:]
 
     # We only keep the long enough contours
     min_contour_length = min(width, height) / 50
@@ -100,8 +93,11 @@ def detect_markers(img, scale=1):
         ),
         dtype='float32')
 
-    
+
     for contour in contours:
+        # if cv2.contourArea(contour) <= 500:
+        #     continue
+
         cnt_len = cv2.arcLength(contour, True)
         approx_curve = cv2.approxPolyDP(contour, cnt_len * 0.02, True)
         if not (len(approx_curve) == 4 and cv2.isContourConvex(approx_curve) and cv2.contourArea(approx_curve) > 100):
@@ -119,8 +115,12 @@ def detect_markers(img, scale=1):
         )
         persp_transf = cv2.getPerspectiveTransform(sorted_curve, canonical_marker_coords)
         warped_img = cv2.warpPerspective(gray, persp_transf, (warped_size, warped_size))
-        warped_img = cv2.GaussianBlur(warped_img, (3, 3), 1.1)
-        _, warped_bin = cv2.threshold(warped_img, 150, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+
+        # kernel_sharpen_1 = np.array([[-1,-1,-1],[-1,9,-1],[-1,-1,-1]])
+        # sharpen_warped_img = cv2.filter2D(warped_img,-1,kernel_sharpen_1)
+
+        # _, warped_bin = cv2.threshold(warped_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        _, warped_bin = cv2.threshold(warped_img, 165, 255, cv2.THRESH_BINARY)
 
         marker = warped_bin.reshape(
             [MARKER_SIZE, warped_size // MARKER_SIZE, MARKER_SIZE, warped_size // MARKER_SIZE]
@@ -128,14 +128,21 @@ def detect_markers(img, scale=1):
         marker = marker.mean(axis=3).mean(axis=1)
         marker[marker < 127] = 0
         marker[marker >= 127] = 1
-        
+
         try:
             marker = validate_and_turn(marker)
             hamming_code = extract_hamming_code(marker)
             marker_id = int(decode(hamming_code), 2)
             markers_list.append(HammingMarker(id=marker_id, contours=approx_curve.astype('int')))
-            
+
         except ValueError as e:
             # print(e)
+
+            # print(marker_id)
+
+            # cv2.imshow('warped_bin', warped_bin)
+            # cv2.imshow('warped_img', warped_img)
+            # cv2.waitKey()
             continue
+
     return markers_list, rect_list
