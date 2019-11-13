@@ -5,6 +5,7 @@ from threading import Lock
 import cv2
 import numpy as np
 
+from common.utils import check_time
 
 class Camera:
     def __init__(self, name, rtsp_link, map_positions, last_map_pix, img_size):
@@ -29,32 +30,48 @@ class Camera:
                                                            img_size, 5)
 
         self.capture = cv2.VideoCapture(rtsp_link)
-        self.capture.set(cv2.CAP_PROP_POS_FRAMES, 2010)
 
         thread = threading.Thread(target=self.rtsp_cam_buffer,
-                                  args=(self.capture,),
+                                  args=(),
                                   name="rtsp_read_thread")
         thread.daemon = True
-        # thread.start()
+        thread.start()
 
-    def rtsp_cam_buffer(self, capture):
+    def rtsp_cam_buffer(self):
         while True:
             with self.lock:
-                self.last_ready, self.last_frame = capture.read()
-                # time.sleep(0.01)
+                self.last_ready, self.last_frame = self.capture.read()
 
-
+    @check_time
     def read_each_img(self):
         ret, img = self.capture.read()
         if ret:
-            img = cv2.remap(img.copy(), self.map1, self.map2, cv2.INTER_CUBIC)
-
-        return ret, img
-
-
-    def read(self):
-        if (self.last_ready is not None) and (self.last_frame is not None):
-            return cv2.remap(self.last_frame.copy(), self.map1,
-                             self.map2, cv2.INTER_CUBIC)
+            return cv2.remap(img, self.map1, self.map2, cv2.INTER_CUBIC)
         else:
             return None
+
+    @check_time
+    def read_last_frame(self, distortion=False):
+        if self.last_ready and self.last_frame is not None:
+            if not distortion:
+                return self.last_frame
+            else:
+                return cv2.remap(self.last_frame, self.map1, self.map2,
+                                 cv2.INTER_CUBIC)
+        else:
+            return None
+
+    # def read_last_frame(self, distortion=False):
+    #     if distortion:
+    #         if self.last_distorted_frame is not None:
+    #             return self.last_distorted_frame
+
+    #     else:
+    #         if self.last_frame is not None:
+    #             return self.last_frame
+
+    #     return None
+
+
+
+

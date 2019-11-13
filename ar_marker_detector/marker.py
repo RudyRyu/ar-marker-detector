@@ -10,6 +10,7 @@ from numpy import array
 # from scipy.ndimage import zoom  # get rid of this! - replaced w/ cv2.Resize
 
 from ar_marker_detector.coding import encode, HAMMINGCODE_MARKER_POSITIONS
+from common.utils import check_time
 
 MARKER_SIZE = 7
 
