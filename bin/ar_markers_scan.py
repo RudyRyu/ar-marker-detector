@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import argparse
+import time
 from collections import defaultdict
 
 import cv2
@@ -14,6 +15,25 @@ from common.utils import log
 # parser = argparse.ArgumentParser()
 # parser.add_argument('-cam')
 # parser.add_argument('-frame_size', type=int, nargs='+')
+
+
+@check_time
+def draw_contours(img, rects):
+    img_copy = img.copy()
+    for rect in rects:
+        cv2.drawContours(img_copy, [rect], -1, (0, 0, 255), 5)
+
+    return img_copy
+
+
+@check_time
+def draw_marker_boxes(img, detected_markers):
+    img_copy = img.copy()
+    for dm in detected_markers:
+        dm.highlight_marker(img_copy)
+
+    return img_copy
+
 
 @check_time
 def classify_markers(detected_markers, marker_positions, car_ids, obs_ids):
@@ -46,22 +66,6 @@ def classify_markers(detected_markers, marker_positions, car_ids, obs_ids):
 
 
 @check_time
-def draw_contours(img, rects):
-    img_copy = img.copy()
-    for rect in rects:
-        cv2.drawContours(img_copy, [rect], -1, (0, 0, 255), 5)
-
-    return img_copy
-
-@check_time
-def draw_marker_boxes(img, detected_markers):
-    img_copy = img.copy()
-    for dm in detected_markers:
-        dm.highlight_marker(img_copy)
-
-    return img_copy
-
-@check_time
 def get_map_coords(map_coords, map_markers):
 
     def get_map_coord(i, j, k):
@@ -73,7 +77,7 @@ def get_map_coords(map_coords, map_markers):
             k: idx of map_coords dictionary
 
         Return:
-            (map position abs, map position pixel)
+            (x1, x2, y1 ,y2)
         """
 
         if (map_markers[i] is None) and (map_markers[j] is None):
@@ -104,15 +108,21 @@ def get_map_coords(map_coords, map_markers):
     else:
         return (x1,x2,y1,y2)
 
+
 @check_time
 def get_car_absolute_coords(car_markers, x1, x2, y1, y2):
 
     def get_car_absolute_coord(car_marker):
 
-        car_abs_x = int(x1[0]+(x2[0]-x1[0]) \
-                         * ((car_marker.center[0]-x1[1])/(x2[1]-x1[1])))
-        car_abs_y = int(y1[0]+(y2[0]-y1[0]) \
-                         * ((car_marker.center[1]-y1[1])/(y2[1]-y1[1])))
+        try:
+            car_abs_x = int(x1[0]+(x2[0]-x1[0]) \
+                             * ((car_marker.center[0]-x1[1])/(x2[1]-x1[1])))
+            car_abs_y = int(y1[0]+(y2[0]-y1[0]) \
+                             * ((car_marker.center[1]-y1[1])/(y2[1]-y1[1])))
+        except ZeroDivisionError as e:
+            log.info(e)
+            car_abs_x = 0
+            car_abs_y = 0
 
         return (car_abs_x, car_abs_y)
 
@@ -121,6 +131,7 @@ def get_car_absolute_coords(car_markers, x1, x2, y1, y2):
         car_abs_coords.append((car_marker, get_car_absolute_coord(car_marker)))
 
     return car_abs_coords
+
 
 @check_time
 def set_final_car_abs_coords_per_cam(final_car_abs_coords, car_abs_coords,
@@ -131,9 +142,11 @@ def set_final_car_abs_coords_per_cam(final_car_abs_coords, car_abs_coords,
         cv2.putText(img, text, cac[0].center,
                     1, 4.0, (0, 255, 0), thickness=5)
 
+
 @check_time
 def show_img(img_name, img, r_scale):
     cv2.imshow(img_name, cv2.resize(img, None, fx=r_scale, fy=r_scale))
+
 
 @check_time
 def set_final_car_abs_coords(final_car_abs_coords):
@@ -146,12 +159,13 @@ def set_final_car_abs_coords(final_car_abs_coords):
             x = 0
             y = 0
             for f, abs_coord in enumerate(final_car_abs_coords[idx]):
-                log.debug(f'{f}: {abs_coord}')
+                # log.debug(f'{f}: {abs_coord}')
                 x += abs_coord[0]
                 y += abs_coord[1]
 
             final_car_abs_coords[idx] = \
                         (int(x/overlap_num), int(y/overlap_num))
+
 
 @check_time
 def something_to_do(final_car_abs_coords):
@@ -165,48 +179,63 @@ def run_detection(conf):
     # args = parser.parse_args()
     # capture = Camera(args.cam, tuple(args.frame_size))
 
-    map_infos = {2:(0,0),
-                 4:(57,0),
-                 1:(0,56),
-                 3:(57,56)}
+    # map_infos = {2:(0,0),
+    #              4:(50,0),
+    #              6:(100,0),
+    #              1:(0,50),
+    #              3:(50,50),
+    #              6:(100,50)}
+
+    map_infos = {1:(0,0),
+                 2:(57,0),
+                 3:(0,56),
+                 4:(57,56)}
 
     car_ids = [101, 102]
     obs_ids = []
 
     cam1 = Camera(name='cam1',
-                  rtsp_link='demo.mkv',
-                  map_positions=(2,4,1,3),
+                  rtsp_link="rtsp://admin:ijoonn13407@192.168.128.82/h264",
+                  map_positions=(1,2,3,4),
                   last_map_pix=None,
-                  img_size=(1920, 1080))
+                  img_size=(1920,1080))
 
-    # cam2 = Camera(~)
+    cam2 = Camera(name='cam2',
+                  rtsp_link="rtsp://admin:ijoonn13407@192.168.128.82/h264",
+                  map_positions=(1,2,3,4),
+                  last_map_pix=None,
+                  img_size=(1920,1080))
 
-    cams = [cam1]
+    cams = [cam1, cam2]
     # view_size = (1280, 720)
+
     r_scale = 0.5
 
     while True:
         final_car_abs_coords = defaultdict(lambda: [])
+
+        s = time.time()
         for cam in cams:
-            # img = cam.read()
-            ret, img = cam.read_each_img()
-            if not ret:
+            log.debug('')
+            img = cam.read_last_frame(distortion=True)
+            if img is None:
                 continue
 
-            detected_markers, contours = detect_markers(img)
+            detected_markers, contours = detect_markers(img, scale=1)
             img = draw_contours(img, contours)
             img = draw_marker_boxes(img, detected_markers)
             map_markers, car_markers, obs_markers = \
-                                    classify_markers(detected_markers,
-                                                     cam.map_positions,
-                                                     car_ids,
-                                                     obs_ids)
+                                        classify_markers(detected_markers,
+                                                         cam.map_positions,
+                                                         car_ids,
+                                                         obs_ids)
 
             map_coords = get_map_coords(map_infos, map_markers)
             if map_coords is None:
                 if cam.last_map_pix is None:
                     log.info('Map markers must be detected')
                     show_img(cam.name, img, r_scale)
+                    cv2.waitKey(1)
                     continue
                 else:
                     map_coords = cam.last_map_pix
@@ -218,13 +247,13 @@ def run_detection(conf):
                                              car_abs_coords, img)
 
             show_img(cam.name, img, r_scale)
-
-            if cv2.waitKey() & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
         set_final_car_abs_coords(final_car_abs_coords)
         something_to_do(final_car_abs_coords)
 
+        log.debug(f'Final time {time.time()-s:.3f} sec')
 
 if __name__ == '__main__':
     run_detection(None)
