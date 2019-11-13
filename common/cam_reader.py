@@ -17,13 +17,17 @@ class Camera:
         self.last_frame = None
         self.last_ready = None
         self.lock = Lock()
+        
+        cf_w = img_size[0] / 1920.
+        cf_h = img_size[1] / 1080.
 
         K = np.array([[840.737*cf_w,        0.,           941.125*cf_w],
                       [0,             841.965*cf_h,       582.547*cf_h],
                       [0,                 0,                 1]])
 
         # Distortion Coefficients(kc) - 1st, 2nd
-        d = np.array([-0.143462, 0.017334, 0.000636, 0.002194]) # just use first two terms
+        d = np.array([-0.143462, 0.017334, 0.000636, 0.002194]) # just use first two terms      
+
         cam_mat, roi = cv2.getOptimalNewCameraMatrix(K, d, img_size, 0)
         self.map1, self.map2 = cv2.initUndistortRectifyMap(K, d, None, cam_mat,
                                                            img_size, 5)
