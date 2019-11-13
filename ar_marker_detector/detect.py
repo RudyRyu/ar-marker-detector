@@ -95,8 +95,9 @@ def detect_markers(img, scale=1):
 
 
     for contour in contours:
-        # if cv2.contourArea(contour) <= 500:
-        #     continue
+        con_area = cv2.contourArea(contour)
+        if con_area <= 1000 or con_area >= 2500:
+            continue
 
         cnt_len = cv2.arcLength(contour, True)
         approx_curve = cv2.approxPolyDP(contour, cnt_len * 0.02, True)

@@ -144,8 +144,8 @@ def set_final_car_abs_coords_per_cam(final_car_abs_coords, car_abs_coords,
 
 
 @check_time
-def show_img(img_name, img, r_scale):
-    cv2.imshow(img_name, cv2.resize(img, None, fx=r_scale, fy=r_scale))
+def show_img(img_name, img, view_size, r_scale=1):
+    cv2.imshow(img_name, cv2.resize(img, view_size, fx=r_scale, fy=r_scale))
 
 
 @check_time
@@ -207,8 +207,8 @@ def run_detection(conf):
                   img_size=(1920,1080))
 
     cams = [cam1, cam2]
-    # view_size = (1280, 720)
 
+    view_size = (1280, 720)
     r_scale = 0.5
 
     while True:
@@ -234,8 +234,7 @@ def run_detection(conf):
             if map_coords is None:
                 if cam.last_map_pix is None:
                     log.info('Map markers must be detected')
-                    show_img(cam.name, img, r_scale)
-                    cv2.waitKey(1)
+                    show_img(cam.name, img, view_size)
                     continue
                 else:
                     map_coords = cam.last_map_pix
@@ -246,9 +245,10 @@ def run_detection(conf):
             set_final_car_abs_coords_per_cam(final_car_abs_coords,
                                              car_abs_coords, img)
 
-            show_img(cam.name, img, r_scale)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            show_img(cam.name, img, view_size)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
         set_final_car_abs_coords(final_car_abs_coords)
         something_to_do(final_car_abs_coords)

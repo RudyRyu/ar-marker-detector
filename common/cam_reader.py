@@ -17,7 +17,11 @@ class Camera:
         self.last_frame = None
         self.last_ready = None
         self.lock = Lock()
-        
+        self.capture = cv2.VideoCapture(rtsp_link)
+
+        img_size = (int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                    int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+
         cf_w = img_size[0] / 1920.
         cf_h = img_size[1] / 1080.
 
@@ -26,7 +30,7 @@ class Camera:
                       [0,                 0,                 1]])
 
         # Distortion Coefficients(kc) - 1st, 2nd
-        d = np.array([-0.143462, 0.017334, 0.000636, 0.002194]) # just use first two terms      
+        d = np.array([-0.143462, 0.017334, 0.000636, 0.002194]) # just use first two terms
 
         cam_mat, roi = cv2.getOptimalNewCameraMatrix(K, d, img_size, 0)
         self.map1, self.map2 = cv2.initUndistortRectifyMap(K, d, None, cam_mat,

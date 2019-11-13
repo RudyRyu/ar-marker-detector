@@ -11,7 +11,7 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
 
 log.addHandler(handler)
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 def check_time(func):
     """Print the runtime of the decorated function"""
