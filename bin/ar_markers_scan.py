@@ -8,6 +8,7 @@ from collections import defaultdict
 from pprint import pprint
 
 import cv2
+import numpy as np
 
 from ar_marker_detector.detect import detect_markers
 from common.cam_reader import Camera
@@ -184,7 +185,7 @@ def send_data(final_obj_abs_coords, car_ids, obs_ids,
     # udp_sock.sendto(json_bytes, server_address)
 
 
-def run_detection(conf):
+def run_detection(conf, record):
 
     map_infos = {}
     for key in conf['map_infos']:
@@ -215,6 +216,9 @@ def run_detection(conf):
     udp_sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     server_address = tuple(conf['server_address'])
 
+    cam_img_list1 = np.empty((100000, 1080, 1920, 3), dtype=np.uint8)
+
+    frame_idx = 0
     while True:
         final_obj_abs_coords = defaultdict(lambda: [])
 
@@ -251,6 +255,8 @@ def run_detection(conf):
                                              obj_abs_coords, img)
 
             show_img(cam.name, img, view_size)
+            cam_img_list1[frame_idx] = img[:]
+            frame_idx += 1
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -261,12 +267,31 @@ def run_detection(conf):
 
         log.debug(f'Final time {time.time()-s:.3f} sec')
 
+    cv2.destroyAllWindows()
+    if record:
+        out1 = cv2.VideoWriter('output1.mkv',
+                           cv2.VideoWriter_fourcc(*'H264'),
+                           8,
+                           (1920, 1080))
+
+        log.info('cam1 save start')
+        for fid in range(frame_idx):
+            out1.write(cam_img_list1[fid])
+
+        out1.release()
+
+    # out1 = cv2.VideoWriter('output1.avi',
+    #                        cv2.VideoWriter_fourcc(*'MJPG'),
+    #                        30,
+    #                        (1920, 1080))
+
 if __name__ == '__main__':
 
     args = arg_parser.parse_args()
     config_path = args.conf
+    record = args.record
 
     with open(config_path) as config_buffer:
         conf = json.loads(config_buffer.read())
 
-    run_detection(conf)
+    run_detection(conf, record)

@@ -9,7 +9,7 @@
     },
 
     "car_ids":  [0, 48],
-    "obs_ids":  [59, 182, 41, 99],
+    "obs_ids":  [4095],
 
     "cam_infos": {
         "cam1": {
@@ -17,20 +17,13 @@
             "map_positions": [2059,1792,2496, 2304],
             "calibration": true,
             "flip": null
-        },
-
-        "cam2": {
-            "rtsp_link": "rtsp://admin:ijoonn13407@192.168.3.37/h264",
-            "map_positions": [2496,2304,1035,5],
-            "calibration": true,
-            "flip": -1
         }
     },
 
     "img_size": [1920, 1080],
 
-    "view_size": [640, 360],
+    "view_size": [1280, 720],
     "resize_scale": 0.5,
 
-    "server_address": ["127.0.0.1", 9191]
+    "server_address": ["192.168.3.17", 9191]
 }

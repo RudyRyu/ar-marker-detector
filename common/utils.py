@@ -30,3 +30,9 @@ arg_parser.add_argument(
     '--conf',
     default='config.json',
     help='path to configuration file')
+
+arg_parser.add_argument(
+    '-r',
+    '--record',
+    action='store_true',
+    help='whether to record')
