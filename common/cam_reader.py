@@ -8,19 +8,22 @@ import numpy as np
 from common.utils import check_time
 
 class Camera:
-    def __init__(self, name, rtsp_link, map_positions, last_map_pix, img_size):
+    def __init__(self, name, rtsp_link, map_positions, img_size=(1920, 1080),
+                                                       calibration=True,
+                                                       flip=None):
 
         self.name = name
         self.map_positions = map_positions
-        self.last_map_pix = last_map_pix
+        self.last_map_pix = None
+        self.calibration = calibration
+        self.flip = flip
+        self.img_size = img_size
 
         self.last_frame = None
         self.last_ready = None
         self.lock = Lock()
-        self.capture = cv2.VideoCapture(rtsp_link)
 
-        img_size = (int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                    int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        self.capture = cv2.VideoCapture(rtsp_link)
 
         cf_w = img_size[0] / 1920.
         cf_h = img_size[1] / 1080.
@@ -36,8 +39,6 @@ class Camera:
         self.map1, self.map2 = cv2.initUndistortRectifyMap(K, d, None, cam_mat,
                                                            img_size, 5)
 
-        self.capture = cv2.VideoCapture(rtsp_link)
-
         thread = threading.Thread(target=self.rtsp_cam_buffer,
                                   args=(),
                                   name="rtsp_read_thread")
@@ -50,35 +51,42 @@ class Camera:
                 self.last_ready, self.last_frame = self.capture.read()
 
     @check_time
-    def read_each_img(self):
-        ret, img = self.capture.read()
-        if ret:
-            return cv2.remap(img, self.map1, self.map2, cv2.INTER_CUBIC)
+    def read_last_frame(self):
+        if self.last_ready and (self.last_frame is not None):
+            h, w = self.last_frame.shape[:2]
+            if self.img_size != (w, h):
+                img = cv2.resize(self.last_frame, self.img_size)
+            else:
+                img = self.last_frame
+
+            if self.calibration:
+                img = cv2.remap(self.last_frame, self.map1, self.map2,
+                                 cv2.INTER_CUBIC)
+
+            if self.flip in [-1,0,1]:
+                img = cv2.flip(img, self.flip)
+
+            return img
+
         else:
             return None
+
 
     @check_time
-    def read_last_frame(self, distortion=False):
-        if self.last_ready and self.last_frame is not None:
-            if not distortion:
-                return self.last_frame
-            else:
-                return cv2.remap(self.last_frame, self.map1, self.map2,
-                                 cv2.INTER_CUBIC)
+    def read_each_frame(self):
+        ret, img = self.capture.read()
+
+        if ret:
+            if self.img_size != (img.shape[1], img.shape[0]):
+                img = cv2.resize(img, self.img_size)
+
+            if self.calibration:
+                img = cv2.remap(img, self.map1, self.map2, cv2.INTER_CUBIC)
+
+            if self.flip in [-1,0,1]:
+                img = cv2.flip(img, self.flip)
+
+            return img
+
         else:
             return None
-
-    # def read_last_frame(self, distortion=False):
-    #     if distortion:
-    #         if self.last_distorted_frame is not None:
-    #             return self.last_distorted_frame
-
-    #     else:
-    #         if self.last_frame is not None:
-    #             return self.last_frame
-
-    #     return None
-
-
-
-

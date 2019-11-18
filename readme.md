@@ -1,6 +1,20 @@
-## How To Run  
+
+# Installation
+
+## Prerequisites
 ```
-export PYTHONPATH=$PYTHONPATH:$(pwd)  
-python .\bin\scan\ar_markers_scan.py -cam rtsp://id:passwd@ip/h264 -frame_size 1920 1080  
-python .\bin\scan\ar_markers_scan.py -cam 0 -frame_size 1920 1080  
+Python 3.6+
+numpy
+opencv-contrib-python
+```
+
+## Install
+```
+pip3 install -r requirements.txt
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+```
+
+## Run
+```
+python3 bin/ar_markers_scan.py -c config.json
 ```

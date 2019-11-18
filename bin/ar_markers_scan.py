@@ -1,8 +1,11 @@
 from __future__ import print_function
 
 import argparse
+import json
+import socket
 import time
 from collections import defaultdict
+from pprint import pprint
 
 import cv2
 
@@ -10,11 +13,7 @@ from ar_marker_detector.detect import detect_markers
 from common.cam_reader import Camera
 from common.utils import check_time
 from common.utils import log
-
-
-# parser = argparse.ArgumentParser()
-# parser.add_argument('-cam')
-# parser.add_argument('-frame_size', type=int, nargs='+')
+from common.utils import arg_parser
 
 
 @check_time
@@ -110,36 +109,35 @@ def get_map_coords(map_coords, map_markers):
 
 
 @check_time
-def get_car_absolute_coords(car_markers, x1, x2, y1, y2):
+def get_obj_absolute_coords(obj_markers, x1, x2, y1, y2):
 
-    def get_car_absolute_coord(car_marker):
-
+    def get_obj_absolute_coord(obj_marker):
         try:
-            car_abs_x = int(x1[0]+(x2[0]-x1[0]) \
-                             * ((car_marker.center[0]-x1[1])/(x2[1]-x1[1])))
-            car_abs_y = int(y1[0]+(y2[0]-y1[0]) \
-                             * ((car_marker.center[1]-y1[1])/(y2[1]-y1[1])))
+            obj_abs_x = int(x1[0]+(x2[0]-x1[0]) \
+                             * ((obj_marker.center[0]-x1[1])/(x2[1]-x1[1])))
+            obj_abs_y = int(y1[0]+(y2[0]-y1[0]) \
+                             * ((obj_marker.center[1]-y1[1])/(y2[1]-y1[1])))
         except ZeroDivisionError as e:
             log.info(e)
-            car_abs_x = 0
-            car_abs_y = 0
+            obj_abs_x = 0
+            obj_abs_y = 0
 
-        return (car_abs_x, car_abs_y)
+        return (obj_abs_x, obj_abs_y)
 
-    car_abs_coords = []
-    for car_marker in car_markers:
-        car_abs_coords.append((car_marker, get_car_absolute_coord(car_marker)))
+    obj_abs_coords = []
+    for obj_marker in obj_markers:
+        obj_abs_coords.append((obj_marker, get_obj_absolute_coord(obj_marker)))
 
-    return car_abs_coords
+    return obj_abs_coords
 
 
 @check_time
-def set_final_car_abs_coords_per_cam(final_car_abs_coords, car_abs_coords,
+def set_final_obj_abs_coords_per_cam(final_obj_abs_coords, obj_abs_coords,
                                                            img):
-    for cac in car_abs_coords:
-        final_car_abs_coords[cac[0].id].append(cac[1])
-        text = f'  {cac[1]}'
-        cv2.putText(img, text, cac[0].center,
+    for oac in obj_abs_coords:
+        final_obj_abs_coords[oac[0].id].append(oac[1])
+        text = f'  {oac[1]}'
+        cv2.putText(img, text, oac[0].center,
                     1, 4.0, (0, 255, 0), thickness=5)
 
 
@@ -149,80 +147,86 @@ def show_img(img_name, img, view_size, r_scale=1):
 
 
 @check_time
-def set_final_car_abs_coords(final_car_abs_coords):
-    for idx in final_car_abs_coords.keys():
-        overlap_num = len(final_car_abs_coords[idx])
+def set_final_obj_abs_coords(final_obj_abs_coords):
+    for idx in final_obj_abs_coords.keys():
+        overlap_num = len(final_obj_abs_coords[idx])
         if overlap_num == 1:
-            final_car_abs_coords[idx] = final_car_abs_coords[idx][0]
+            final_obj_abs_coords[idx] = final_obj_abs_coords[idx][0]
 
         elif overlap_num > 1:
             x = 0
             y = 0
-            for f, abs_coord in enumerate(final_car_abs_coords[idx]):
+            for f, abs_coord in enumerate(final_obj_abs_coords[idx]):
                 # log.debug(f'{f}: {abs_coord}')
                 x += abs_coord[0]
                 y += abs_coord[1]
 
-            final_car_abs_coords[idx] = \
+            final_obj_abs_coords[idx] = \
                         (int(x/overlap_num), int(y/overlap_num))
 
 
 @check_time
-def something_to_do(final_car_abs_coords):
-    if final_car_abs_coords:
-        for idx in final_car_abs_coords.keys():
-            log.info(f'final: {idx} {final_car_abs_coords[idx]}')
+def send_data(final_obj_abs_coords, car_ids, obs_ids,
+              udp_sock, server_address):
+
+    json_data = {'car': {}, 'obs': {}}
+    if final_obj_abs_coords:
+        for idx in final_obj_abs_coords.keys():
+            if idx in car_ids:
+                json_data['car'][idx]=final_obj_abs_coords[idx]
+            elif idx in obs_ids:
+                json_data['obs'][idx]=final_obj_abs_coords[idx]
+
+    json_string = json.dumps(json_data)
+    log.info(json_string)
+
+    # json_bytes = str.encode(json_string)
+    # udp_sock.sendto(json_bytes, server_address)
 
 
 def run_detection(conf):
 
-    # args = parser.parse_args()
-    # capture = Camera(args.cam, tuple(args.frame_size))
+    map_infos = {}
+    for key in conf['map_infos']:
+        map_infos[int(key)] = conf['map_infos'][key]
 
-    # map_infos = {2:(0,0),
-    #              4:(50,0),
-    #              6:(100,0),
-    #              1:(0,50),
-    #              3:(50,50),
-    #              6:(100,50)}
+    car_ids = conf['car_ids']
+    obs_ids = conf['obs_ids']
 
-    map_infos = {1:(0,0),
-                 2:(57,0),
-                 3:(0,56),
-                 4:(57,56)}
+    img_size = tuple(conf['img_size'])
 
-    car_ids = [101, 102]
-    obs_ids = []
+    cams = []
+    for cam_info in conf['cam_infos']:
+        cam = Camera(
+                name=cam_info,
+                rtsp_link=conf['cam_infos'][cam_info]['rtsp_link'],
+                map_positions=conf['cam_infos'][cam_info]['map_positions'],
+                img_size=img_size,
+                calibration=conf['cam_infos'][cam_info]['calibration'],
+                flip=conf['cam_infos'][cam_info]['flip'],
+               )
 
-    cam1 = Camera(name='cam1',
-                  rtsp_link="rtsp://admin:ijoonn13407@192.168.128.82/h264",
-                  map_positions=(1,2,3,4),
-                  last_map_pix=None,
-                  img_size=(1920,1080))
+        cams.append(cam)
 
-    cam2 = Camera(name='cam2',
-                  rtsp_link="rtsp://admin:ijoonn13407@192.168.128.82/h264",
-                  map_positions=(1,2,3,4),
-                  last_map_pix=None,
-                  img_size=(1920,1080))
 
-    cams = [cam1, cam2]
+    view_size = tuple(conf['view_size'])
+    r_scale = conf['resize_scale']
 
-    view_size = (1280, 720)
-    r_scale = 0.5
+    udp_sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+    server_address = tuple(conf['server_address'])
 
     while True:
-        final_car_abs_coords = defaultdict(lambda: [])
+        final_obj_abs_coords = defaultdict(lambda: [])
 
         s = time.time()
         for cam in cams:
             log.debug('')
-            img = cam.read_last_frame(distortion=True)
+            img = cam.read_last_frame()
             if img is None:
                 continue
 
             detected_markers, contours = detect_markers(img, scale=1)
-            img = draw_contours(img, contours)
+            # img = draw_contours(img, contours)
             img = draw_marker_boxes(img, detected_markers)
             map_markers, car_markers, obs_markers = \
                                         classify_markers(detected_markers,
@@ -241,20 +245,28 @@ def run_detection(conf):
             else:
                 cam.last_map_pix = map_coords
 
-            car_abs_coords = get_car_absolute_coords(car_markers, *map_coords)
-            set_final_car_abs_coords_per_cam(final_car_abs_coords,
-                                             car_abs_coords, img)
+            obj_abs_coords = get_obj_absolute_coords(
+                                    [*car_markers, *obs_markers], *map_coords)
+            set_final_obj_abs_coords_per_cam(final_obj_abs_coords,
+                                             obj_abs_coords, img)
 
             show_img(cam.name, img, view_size)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-        set_final_car_abs_coords(final_car_abs_coords)
-        something_to_do(final_car_abs_coords)
+        set_final_obj_abs_coords(final_obj_abs_coords)
+        send_data(final_obj_abs_coords, car_ids, obs_ids,
+                  udp_sock, server_address)
 
         log.debug(f'Final time {time.time()-s:.3f} sec')
 
 if __name__ == '__main__':
-    run_detection(None)
 
+    args = arg_parser.parse_args()
+    config_path = args.conf
+
+    with open(config_path) as config_buffer:
+        conf = json.loads(config_buffer.read())
+
+    run_detection(conf)

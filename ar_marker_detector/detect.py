@@ -65,6 +65,8 @@ def detect_markers(img, scale=1):
       a list of found markers. If no markers are found, then it is an empty list.
     """
 
+    h, w = img.shape[:2]
+
     img= cv2.add(img.copy(), np.array([30.0]))
     if len(img.shape) > 2:
         height, width, _ = img.shape
@@ -94,9 +96,11 @@ def detect_markers(img, scale=1):
         dtype='float32')
 
 
+    min_area = (w/1920*1500 + h/1080*1500)/2
+    max_area = (w/1920*7000 + h/1080*7000)/2
     for contour in contours:
         con_area = cv2.contourArea(contour)
-        if con_area <= 1000 or con_area >= 2500:
+        if con_area <= min_area or con_area >= max_area:
             continue
 
         cnt_len = cv2.arcLength(contour, True)
