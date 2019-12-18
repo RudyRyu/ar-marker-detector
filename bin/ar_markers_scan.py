@@ -201,14 +201,14 @@ def run_detection(conf, record):
     img_size = tuple(conf['img_size'])
 
     cams = []
-    for cam_info in conf['cam_infos']:
+    for cam_name, cam_info in conf['cam_infos'].items():
         cam = Camera(
-                name=cam_info,
-                rtsp_link=conf['cam_infos'][cam_info]['rtsp_link'],
-                map_positions=conf['cam_infos'][cam_info]['map_positions'],
+                name=cam_name,
+                rtsp_link=cam_info['rtsp_link'],
+                map_positions=cam_info['map_positions'],
                 img_size=img_size,
-                calibration=conf['cam_infos'][cam_info]['calibration'],
-                flip=conf['cam_infos'][cam_info]['flip'],
+                calibration=cam_info['calibration'],
+                flip=cam_info['flip'],
                )
 
         cams.append(cam)
@@ -219,8 +219,6 @@ def run_detection(conf, record):
 
     udp_sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     server_address = tuple(conf['server_address'])
-
-    cam_img_list1 = np.empty((100000, 1080, 1920, 3), dtype=np.uint8)
 
     frame_idx = 0
     while True:
@@ -259,8 +257,8 @@ def run_detection(conf, record):
                                              obj_abs_coords, img)
 
             show_img(cam.name, img, view_size)
-            cam_img_list1[frame_idx] = img[:]
-            frame_idx += 1
+            if record:
+                cam.record_list.append(img)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -272,22 +270,19 @@ def run_detection(conf, record):
         log.debug(f'Final time {time.time()-s:.3f} sec')
 
     cv2.destroyAllWindows()
+
     if record:
-        out1 = cv2.VideoWriter('output1.mkv',
-                           cv2.VideoWriter_fourcc(*'H264'),
-                           8,
-                           (1920, 1080))
+        for cam in cams:
+            out = cv2.VideoWriter(f'{cam.name}.mkv',
+                                  cv2.VideoWriter_fourcc(*'H264'),
+                                  8,
+                                  (1920, 1080))
 
-        log.info('cam1 save start')
-        for fid in range(frame_idx):
-            out1.write(cam_img_list1[fid])
+            log.info(f'{cam.name} video save')
+            for img in cam.record_list:
+                out.write(img)
 
-        out1.release()
-
-    # out1 = cv2.VideoWriter('output1.avi',
-    #                        cv2.VideoWriter_fourcc(*'MJPG'),
-    #                        30,
-    #                        (1920, 1080))
+            out.release()
 
 if __name__ == '__main__':
 

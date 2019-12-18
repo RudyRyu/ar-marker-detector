@@ -23,6 +23,7 @@ class Camera:
         self.last_ready = None
         self.lock = Lock()
 
+        self.record_list = []
         self.capture = cv2.VideoCapture(rtsp_link)
 
         cf_w = img_size[0] / 1920.
@@ -61,7 +62,7 @@ class Camera:
 
             if self.calibration:
                 img = cv2.remap(self.last_frame, self.map1, self.map2,
-                                 cv2.INTER_CUBIC)
+                                cv2.INTER_CUBIC)
 
             if self.flip in [-1,0,1]:
                 img = cv2.flip(img, self.flip)
