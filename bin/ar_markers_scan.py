@@ -1,5 +1,9 @@
 from __future__ import print_function
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
 import argparse
 import json
 import socket

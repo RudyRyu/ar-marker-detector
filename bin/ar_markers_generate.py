@@ -1,11 +1,16 @@
 from __future__ import print_function
+
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
 import argparse
 
 try:
     from cv2 import imwrite
     from ar_marker_detector.marker import HammingMarker
 except ImportError:
-    raise Exception('import ImportError')
+    raise Exception('ImportError')
 
 
 def handleArgs():
