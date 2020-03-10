@@ -16,10 +16,10 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 ## Run
 ```
-1. 영상 확인
+1. Not Saving
 python3 bin/ar_markers_scan.py -c config.json
 
-2. 영상 저장 (-r)
+2. Saving (-r)
 python3 bin/ar_markers_scan.py -c config.json -r
 
 ```
