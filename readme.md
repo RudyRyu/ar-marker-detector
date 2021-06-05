@@ -23,3 +23,5 @@ python3 bin/ar_markers_scan.py -c config.json
 python3 bin/ar_markers_scan.py -c config.json -r
 
 ```
+## Demo
+[Youtube Video](https://youtu.be/CZ1bE1dqmCc)
