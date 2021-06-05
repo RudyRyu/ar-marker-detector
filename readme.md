@@ -24,4 +24,4 @@ python3 bin/ar_markers_scan.py -c config.json -r
 
 ```
 ## Demo
-[Youtube Video](https://youtu.be/CZ1bE1dqmCc)
+[Youtube Video](https://youtu.be/EKHga1Zcs-M)
