@@ -1,7 +1,10 @@
-# Flow
+## Flow
 <img width="474" alt="block" src="https://user-images.githubusercontent.com/42403593/120899336-313f5800-c66a-11eb-804d-4201e4a257cb.png">
 
-# Installation
+## Demo
+[Youtube Video](https://youtu.be/EKHga1Zcs-M)
+
+# How to Run
 
 ## Prerequisites
 ```
@@ -25,5 +28,3 @@ python3 bin/ar_markers_scan.py -c config.json
 python3 bin/ar_markers_scan.py -c config.json -r
 
 ```
-## Demo
-[Youtube Video](https://youtu.be/EKHga1Zcs-M)
